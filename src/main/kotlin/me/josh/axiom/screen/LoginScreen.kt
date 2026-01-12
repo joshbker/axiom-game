@@ -6,6 +6,7 @@ import com.badlogic.gdx.Screen
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.GL20
 import com.badlogic.gdx.graphics.Cursor
+import com.badlogic.gdx.graphics.OrthographicCamera
 import com.badlogic.gdx.graphics.g2d.GlyphLayout
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer
 import me.josh.axiom.api.AxiomApiClient
@@ -21,6 +22,7 @@ class LoginScreen(
     private val game: AxiomGame
 ) : Screen {
 
+    private val camera = OrthographicCamera()
     private val layout = GlyphLayout()
 
     // Colors matching website
@@ -60,6 +62,15 @@ class LoginScreen(
         errorMessage = ""
         successMessage = ""
         isLoading = false
+        setupCamera()
+    }
+
+    private fun setupCamera() {
+        val width = Gdx.graphics.width.toFloat()
+        val height = Gdx.graphics.height.toFloat()
+        camera.setToOrtho(false, width, height)
+        camera.position.set(width / 2f, height / 2f, 0f)
+        camera.update()
     }
 
     override fun render(delta: Float) {
@@ -193,8 +204,8 @@ class LoginScreen(
     }
 
     private fun drawUI() {
-        val screenWidth = Gdx.graphics.width.toFloat()
-        val screenHeight = Gdx.graphics.height.toFloat()
+        val screenWidth = camera.viewportWidth
+        val screenHeight = camera.viewportHeight
         val centerX = screenWidth / 2
 
         // Card dimensions
@@ -204,11 +215,13 @@ class LoginScreen(
         val cardY = screenHeight / 2 - cardHeight / 2
 
         // Draw card background
+        game.shapeRenderer.projectionMatrix = camera.combined
         game.shapeRenderer.begin(ShapeRenderer.ShapeType.Filled)
         game.shapeRenderer.color = cardColor
         game.shapeRenderer.rect(cardX, cardY, cardWidth, cardHeight)
         game.shapeRenderer.end()
 
+        game.batch.projectionMatrix = camera.combined
         game.batch.begin()
 
         // Title
@@ -309,12 +322,14 @@ class LoginScreen(
 
     private fun drawInputField(x: Float, y: Float, width: Float, height: Float, label: String, value: String, isActive: Boolean) {
         // Background
+        game.shapeRenderer.projectionMatrix = camera.combined
         game.shapeRenderer.begin(ShapeRenderer.ShapeType.Filled)
         game.shapeRenderer.color = inputBgColor
         game.shapeRenderer.rect(x, y, width, height)
         game.shapeRenderer.end()
 
         // Border (always visible)
+        game.shapeRenderer.projectionMatrix = camera.combined
         game.shapeRenderer.begin(ShapeRenderer.ShapeType.Line)
         game.shapeRenderer.color = if (isActive) accentColor else inputBorderColor
         Gdx.gl.glLineWidth(if (isActive) 2f else 1f)
@@ -322,6 +337,7 @@ class LoginScreen(
         game.shapeRenderer.end()
         Gdx.gl.glLineWidth(1f)
 
+        game.batch.projectionMatrix = camera.combined
         game.batch.begin()
 
         // Label above field
@@ -345,11 +361,13 @@ class LoginScreen(
     private fun drawButton(x: Float, y: Float, width: Float, height: Float, text: String, isHovered: Boolean) {
         val buttonColor = if (isHovered) accentColor.cpy().lerp(Color.WHITE, 0.15f) else accentColor
 
+        game.shapeRenderer.projectionMatrix = camera.combined
         game.shapeRenderer.begin(ShapeRenderer.ShapeType.Filled)
         game.shapeRenderer.color = buttonColor
         game.shapeRenderer.rect(x, y, width, height)
         game.shapeRenderer.end()
 
+        game.batch.projectionMatrix = camera.combined
         game.batch.begin()
         Fonts.heading.color = Color.WHITE
         layout.setText(Fonts.heading, text)
@@ -430,7 +448,12 @@ class LoginScreen(
         )
     }
 
-    override fun resize(width: Int, height: Int) {}
+    override fun resize(width: Int, height: Int) {
+        camera.viewportWidth = width.toFloat()
+        camera.viewportHeight = height.toFloat()
+        camera.position.set(width / 2f, height / 2f, 0f)
+        camera.update()
+    }
     override fun pause() {}
     override fun resume() {}
     override fun hide() {}

@@ -6,6 +6,7 @@ import com.badlogic.gdx.Screen
 import com.badlogic.gdx.graphics.Color
 import com.badlogic.gdx.graphics.Cursor
 import com.badlogic.gdx.graphics.GL20
+import com.badlogic.gdx.graphics.OrthographicCamera
 import com.badlogic.gdx.graphics.g2d.GlyphLayout
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer
 import me.josh.axiom.api.AxiomApiClient
@@ -25,6 +26,7 @@ class MenuScreen(
     private val game: AxiomGame
 ) : Screen {
 
+    private val camera = OrthographicCamera()
     private val layout = GlyphLayout()
 
     // Colors matching website design
@@ -54,6 +56,15 @@ class MenuScreen(
         showingLeaderboard = false
         isLoadingLeaderboard = false
         leaderboardError = ""
+        setupCamera()
+    }
+
+    private fun setupCamera() {
+        val width = Gdx.graphics.width.toFloat()
+        val height = Gdx.graphics.height.toFloat()
+        camera.setToOrtho(false, width, height)
+        camera.position.set(width / 2f, height / 2f, 0f)
+        camera.update()
     }
 
     private fun loadLeaderboard() {
@@ -148,8 +159,8 @@ class MenuScreen(
     }
 
     private fun drawMenu() {
-        val screenWidth = Gdx.graphics.width.toFloat()
-        val screenHeight = Gdx.graphics.height.toFloat()
+        val screenWidth = camera.viewportWidth
+        val screenHeight = camera.viewportHeight
         val centerX = screenWidth / 2
 
         menuItemBounds.clear()
@@ -161,11 +172,13 @@ class MenuScreen(
         val cardY = screenHeight / 2 - cardHeight / 2
 
         // Draw card background
+        game.shapeRenderer.projectionMatrix = camera.combined
         game.shapeRenderer.begin(ShapeRenderer.ShapeType.Filled)
         game.shapeRenderer.color = cardColor
         game.shapeRenderer.rect(cardX, cardY, cardWidth, cardHeight)
         game.shapeRenderer.end()
 
+        game.batch.projectionMatrix = camera.combined
         game.batch.begin()
 
         // Title
@@ -213,11 +226,13 @@ class MenuScreen(
     private fun drawMenuButton(x: Float, y: Float, width: Float, height: Float, text: String, isHovered: Boolean) {
         val buttonColor = if (isHovered) accentColor.cpy().lerp(Color.WHITE, 0.15f) else accentColor
 
+        game.shapeRenderer.projectionMatrix = camera.combined
         game.shapeRenderer.begin(ShapeRenderer.ShapeType.Filled)
         game.shapeRenderer.color = buttonColor
         game.shapeRenderer.rect(x, y, width, height)
         game.shapeRenderer.end()
 
+        game.batch.projectionMatrix = camera.combined
         game.batch.begin()
         Fonts.heading.color = Color.WHITE
         layout.setText(Fonts.heading, text.uppercase())
@@ -226,8 +241,8 @@ class MenuScreen(
     }
 
     private fun drawLeaderboard() {
-        val screenWidth = Gdx.graphics.width.toFloat()
-        val screenHeight = Gdx.graphics.height.toFloat()
+        val screenWidth = camera.viewportWidth
+        val screenHeight = camera.viewportHeight
         val centerX = screenWidth / 2
 
         // Card dimensions (wider for table)
@@ -237,11 +252,13 @@ class MenuScreen(
         val cardY = screenHeight / 2 - cardHeight / 2
 
         // Draw card background
+        game.shapeRenderer.projectionMatrix = camera.combined
         game.shapeRenderer.begin(ShapeRenderer.ShapeType.Filled)
         game.shapeRenderer.color = cardColor
         game.shapeRenderer.rect(cardX, cardY, cardWidth, cardHeight)
         game.shapeRenderer.end()
 
+        game.batch.projectionMatrix = camera.combined
         game.batch.begin()
 
         // Title
@@ -268,10 +285,12 @@ class MenuScreen(
 
             // Separator line
             game.batch.end()
+            game.shapeRenderer.projectionMatrix = camera.combined
             game.shapeRenderer.begin(ShapeRenderer.ShapeType.Filled)
             game.shapeRenderer.color = Color(0x1a / 255f, 0x3d / 255f, 0x39 / 255f, 1f)
             game.shapeRenderer.rect(cardX + 40, cardY + cardHeight - 145, cardWidth - 80, 1f)
             game.shapeRenderer.end()
+            game.batch.projectionMatrix = camera.combined
             game.batch.begin()
 
             // Entries
@@ -303,17 +322,17 @@ class MenuScreen(
         }
 
         // Back button
-        val mouseX = Gdx.input.x.toFloat()
-        val mouseY = Gdx.graphics.height - Gdx.input.y.toFloat()
-
         val backText = "< Back to Menu"
         layout.setText(Fonts.body, backText)
         val backX = centerX - layout.width / 2
         val backY = cardY + 50
 
-        backButtonBounds = MenuItemBounds(backX - 10, backY, layout.width + 20, layout.height)
+        backButtonBounds = MenuItemBounds(backX - 10, backY - 5, layout.width + 20, layout.height + 10)
 
+        val mouseX = Gdx.input.x.toFloat()
+        val mouseY = Gdx.graphics.height - Gdx.input.y.toFloat()
         val isBackHovered = backButtonBounds?.let { isMouseOver(mouseX, mouseY, it) } ?: false
+
         Fonts.body.color = if (isBackHovered) accentColor else subtextColor
         Fonts.body.draw(game.batch, backText, backX, backY)
 
@@ -325,7 +344,12 @@ class MenuScreen(
         game.batch.end()
     }
 
-    override fun resize(width: Int, height: Int) {}
+    override fun resize(width: Int, height: Int) {
+        camera.viewportWidth = width.toFloat()
+        camera.viewportHeight = height.toFloat()
+        camera.position.set(width / 2f, height / 2f, 0f)
+        camera.update()
+    }
     override fun pause() {}
     override fun resume() {}
     override fun hide() {}
