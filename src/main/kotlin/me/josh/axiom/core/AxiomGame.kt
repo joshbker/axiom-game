@@ -6,6 +6,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer
 import me.josh.axiom.api.AxiomApiClient
 import me.josh.axiom.event.EventBus
+import me.josh.axiom.event.GameEventHandler
 import me.josh.axiom.screen.GameScreen
 import me.josh.axiom.screen.LoginScreen
 import me.josh.axiom.screen.MenuScreen
@@ -27,6 +28,9 @@ class AxiomGame : Game() {
 
     val eventBus = EventBus()
 
+    lateinit var eventHandler: GameEventHandler
+        private set
+
     // Currently logged-in player (null if not authenticated)
     var currentPlayerId: String? = null
     var currentPlayerName: String? = null
@@ -42,6 +46,10 @@ class AxiomGame : Game() {
 
         // Initialize API client
         AxiomApiClient.initialize()
+
+        // Initialize event handler - sets up all event subscriptions
+        eventHandler = GameEventHandler(this)
+        eventHandler.initialize()
 
         Gdx.app.log("Axiom", "Game initialized")
 
@@ -63,6 +71,8 @@ class AxiomGame : Game() {
     }
 
     override fun dispose() {
+        eventHandler.dispose()
+        eventBus.clearAll()
         AxiomApiClient.shutdown()
         Fonts.dispose()
         batch.dispose()

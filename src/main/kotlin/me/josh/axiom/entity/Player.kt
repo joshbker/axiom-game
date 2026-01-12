@@ -26,7 +26,6 @@ class Player(
 
     // Combat
     var kills: Int = 0
-        private set
     var attackCooldown: Float = 0f
     val attackRange: Float = 50f
     val attackDamage: Float = 25f
@@ -96,7 +95,7 @@ class Player(
             move(dx * actualSpeed, dy * actualSpeed, world)
             world.updateEntityChunk(this)
 
-            // Emit move event if position changed
+            // If position changed
             if (x != oldX || y != oldY) {
                 AxiomGame.instance.eventBus.emit(PlayerMoveEvent(oldX, oldY, x, y))
             }
@@ -126,10 +125,7 @@ class Player(
 
             if (!event.cancelled) {
                 target.takeDamage(attackDamage, this)
-
-                if (target.isDead) {
-                    kills++
-                }
+                // Kill counting is handled by GameEventHandler listening to EntityDeathEvent
             }
         }
     }

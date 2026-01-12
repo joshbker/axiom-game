@@ -186,23 +186,8 @@ class GameScreen(
         isGameOver = true
         gameOverTimer = 0f
 
+        // Emit GameEndEvent - score saving is handled by GameEventHandler
         game.eventBus.emit(GameEndEvent(player.kills, player.survivalTime))
-
-        val playerId = game.currentPlayerId
-        if (playerId != null) {
-            val score = calculateScore(player.kills, player.survivalTime)
-            AxiomApiClient.submitScore(
-                kills = player.kills,
-                survivalTime = player.survivalTime,
-                score = score
-            ) { success ->
-                if (success) {
-                    Gdx.app.log("Game", "Score saved: $score")
-                } else {
-                    Gdx.app.log("Game", "Failed to save score (offline mode)")
-                }
-            }
-        }
     }
 
     private fun calculateScore(kills: Int, survivalTime: Float): Int {
