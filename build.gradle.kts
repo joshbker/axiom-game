@@ -1,15 +1,11 @@
 plugins {
-    kotlin("jvm") version "2.1.0"
-    kotlin("plugin.serialization") version "2.1.0"
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.serialization)
     application
 }
 
 group = "me.josh"
 version = "1.0-SNAPSHOT"
-
-val gdxVersion = "1.12.1"
-val ktxVersion = "1.12.1-rc1"
-val coroutinesVersion = "1.8.1"
 
 repositories {
     mavenCentral()
@@ -17,35 +13,45 @@ repositories {
 
 dependencies {
     // LibGDX Core
-    implementation("com.badlogicgames.gdx:gdx:$gdxVersion")
+    implementation(libs.gdx.core)
 
     // LibGDX Desktop Backend (LWJGL3)
-    implementation("com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion")
-    implementation("com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop")
+    implementation(libs.gdx.backend.lwjgl3)
+    implementation(libs.gdx.platform) {
+        artifact {
+            classifier = "natives-desktop"
+        }
+    }
 
     // FreeType font rendering
-    implementation("com.badlogicgames.gdx:gdx-freetype:$gdxVersion")
-    implementation("com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-desktop")
+    implementation(libs.gdx.freetype)
+    implementation(libs.gdx.freetype.platform) {
+        artifact {
+            classifier = "natives-desktop"
+        }
+    }
 
     // KTX - Kotlin extensions for LibGDX
-    implementation("io.github.libktx:ktx-app:$ktxVersion")
-    implementation("io.github.libktx:ktx-graphics:$ktxVersion")
-    implementation("io.github.libktx:ktx-assets:$ktxVersion")
-    implementation("io.github.libktx:ktx-async:$ktxVersion")
+    implementation(libs.ktx.app)
+    implementation(libs.ktx.graphics)
+    implementation(libs.ktx.assets)
+    implementation(libs.ktx.async)
 
-    // Kotlin Coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutinesVersion")
+    // Kotlin Coroutines & Serialization
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.serialization.json)
 
     // HTTP Client
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
-
-    // JSON Serialization
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+    implementation(libs.okhttp)
 
     // Noise generation for procedural terrain
-    implementation("com.sudoplay.joise:joise:1.1.0")
+    implementation(libs.joise)
 
-    testImplementation(kotlin("test"))
+    // Testing
+    testImplementation(libs.kotlin.test)
+    testImplementation(libs.kotest.runner.junit5)
+    testImplementation(libs.kotest.assertions.core)
+    testImplementation(libs.kotest.property)
 }
 
 kotlin {
