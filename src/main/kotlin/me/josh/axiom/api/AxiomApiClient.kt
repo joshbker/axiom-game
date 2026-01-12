@@ -54,7 +54,7 @@ class SimpleCookieJar : CookieJar {
  */
 object AxiomApiClient {
 
-    private const val API_BASE_URL = "http://localhost:5173"
+    private const val API_BASE_URL = "https://axiom.joshbaker.gg"
 
     private val cookieJar = SimpleCookieJar()
 
