@@ -35,7 +35,7 @@ class MenuScreen(
     private val subtextColor = Color(0.55f, 0.65f, 0.65f, 1f)
 
     private var hoveredOption = -1
-    private val menuOptions = listOf("Play Game", "Leaderboard", "Logout")
+    private val menuOptions = listOf("Play Game", "Leaderboard", "Sign Out")
 
     // Menu item positions (updated during render)
     private data class MenuItemBounds(val x: Float, val y: Float, val width: Float, val height: Float)
