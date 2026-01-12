@@ -11,9 +11,11 @@ import me.josh.axiom.api.AxiomApiClient
 import me.josh.axiom.core.AxiomGame
 import me.josh.axiom.core.Fonts
 import me.josh.axiom.entity.Enemy
-import me.josh.axiom.entity.EnemyType
+import me.josh.axiom.entity.EntityFactory
 import me.josh.axiom.entity.Player
 import me.josh.axiom.event.GameEndEvent
+import me.josh.axiom.event.GamePauseEvent
+import me.josh.axiom.event.GameResumeEvent
 import me.josh.axiom.event.GameStartEvent
 import me.josh.axiom.world.NoiseWorldGenerator
 import me.josh.axiom.world.World
@@ -74,7 +76,8 @@ class GameScreen(
         val seed = Random.nextLong()
         world = World(NoiseWorldGenerator(seed))
 
-        player = Player(0f, 0f)
+        // Use EntityFactory for consistent player creation
+        player = EntityFactory.createPlayer(0f, 0f)
         world.addEntity(player)
 
         world.updateLoadedChunks(player.x, player.y)
@@ -113,6 +116,12 @@ class GameScreen(
                 returnToMenu()
             } else {
                 isPaused = !isPaused
+                // Emit appropriate event for pause state change
+                if (isPaused) {
+                    game.eventBus.emit(GamePauseEvent())
+                } else {
+                    game.eventBus.emit(GameResumeEvent())
+                }
             }
         }
 
@@ -169,14 +178,7 @@ class GameScreen(
             return
         }
 
-        val type = when (Random.nextFloat()) {
-            in 0f..0.5f -> EnemyType.SLIME
-            in 0.5f..0.75f -> EnemyType.SKELETON
-            in 0.75f..0.9f -> EnemyType.ORC
-            else -> EnemyType.DEMON
-        }
-
-        val enemy = Enemy(spawnX, spawnY, type)
+        val enemy = EntityFactory.createRandomEnemy(spawnX, spawnY)
         world.addEntity(enemy)
     }
 
