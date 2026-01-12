@@ -37,6 +37,11 @@ class SimpleCookieJar : CookieJar {
         Gdx.app.log("CookieJar", "Loading ${cookies.size} cookies for $host: ${cookies.map { it.name }}")
         return cookies
     }
+
+    fun clear() {
+        cookieStore.clear()
+        Gdx.app.log("CookieJar", "All cookies cleared")
+    }
 }
 
 /**
@@ -96,6 +101,14 @@ object AxiomApiClient {
         }
         client.dispatcher.executorService.shutdown()
         client.connectionPool.evictAll()
+    }
+
+    /**
+     * Clear all session cookies (call on logout)
+     */
+    fun clearSession() {
+        cookieJar.clear()
+        Gdx.app.log("AxiomApiClient", "Session cleared")
     }
 
     // ============================================

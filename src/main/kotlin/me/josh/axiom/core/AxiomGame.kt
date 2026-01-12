@@ -83,6 +83,7 @@ class AxiomGame : Game() {
     fun logout() {
         currentPlayerId = null
         currentPlayerName = null
+        AxiomApiClient.clearSession()
         setScreen(LoginScreen(this))
     }
 
