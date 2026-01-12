@@ -45,8 +45,17 @@ class AxiomGame : Game() {
 
         Gdx.app.log("Axiom", "Game initialized")
 
-        // Start at the login screen
-        setScreen(LoginScreen(this))
+        // Check for saved session
+        val savedUser = AxiomApiClient.getSavedUser()
+        if (savedUser != null) {
+            currentPlayerId = savedUser.first
+            currentPlayerName = savedUser.second
+            Gdx.app.log("Axiom", "Restored session for ${savedUser.second}")
+            setScreen(MenuScreen(this))
+        } else {
+            // Start at the login screen
+            setScreen(LoginScreen(this))
+        }
     }
 
     override fun render() {

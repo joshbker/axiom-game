@@ -20,14 +20,21 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
 
 /**
- * Simple in-memory cookie jar for storing session cookies
+ * Persistent cookie jar that stores session cookies to disk using LibGDX Preferences.
+ * Cookies survive game restarts.
  */
 class SimpleCookieJar : CookieJar {
     private val cookieStore = mutableMapOf<String, MutableList<Cookie>>()
+    private val prefs = Gdx.app.getPreferences("axiom_session")
+
+    init {
+        loadFromDisk()
+    }
 
     override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
         val host = url.host
         cookieStore[host] = cookies.toMutableList()
+        saveToDisk()
         Gdx.app.log("CookieJar", "Saved ${cookies.size} cookies from $host: ${cookies.map { it.name }}")
     }
 
@@ -40,7 +47,69 @@ class SimpleCookieJar : CookieJar {
 
     fun clear() {
         cookieStore.clear()
+        prefs.clear()
+        prefs.flush()
         Gdx.app.log("CookieJar", "All cookies cleared")
+    }
+
+    private fun saveToDisk() {
+        prefs.clear()
+        for ((host, cookies) in cookieStore) {
+            cookies.forEachIndexed { index, cookie ->
+                val prefix = "${host}_$index"
+                prefs.putString("${prefix}_name", cookie.name)
+                prefs.putString("${prefix}_value", cookie.value)
+                prefs.putString("${prefix}_domain", cookie.domain)
+                prefs.putString("${prefix}_path", cookie.path)
+                prefs.putLong("${prefix}_expiresAt", cookie.expiresAt)
+                prefs.putBoolean("${prefix}_secure", cookie.secure)
+                prefs.putBoolean("${prefix}_httpOnly", cookie.httpOnly)
+            }
+            prefs.putInteger("${host}_count", cookies.size)
+        }
+        prefs.flush()
+        Gdx.app.log("CookieJar", "Cookies saved to disk")
+    }
+
+    private fun loadFromDisk() {
+        val allKeys = prefs.get().keys
+        val hosts = allKeys.filter { it.endsWith("_count") }.map { it.removeSuffix("_count") }
+
+        for (host in hosts) {
+            val count = prefs.getInteger("${host}_count", 0)
+            val cookies = mutableListOf<Cookie>()
+
+            for (i in 0 until count) {
+                val prefix = "${host}_$i"
+                val name = prefs.getString("${prefix}_name", "") ?: ""
+                val value = prefs.getString("${prefix}_value", "") ?: ""
+                val domain = prefs.getString("${prefix}_domain", "") ?: ""
+                val path = prefs.getString("${prefix}_path", "/") ?: "/"
+                val expiresAt = prefs.getLong("${prefix}_expiresAt", 0L)
+                val secure = prefs.getBoolean("${prefix}_secure", false)
+                val httpOnly = prefs.getBoolean("${prefix}_httpOnly", false)
+
+                if (name.isNotEmpty() && expiresAt > System.currentTimeMillis()) {
+                    val cookie = Cookie.Builder()
+                        .name(name)
+                        .value(value)
+                        .domain(domain)
+                        .path(path)
+                        .expiresAt(expiresAt)
+                        .apply {
+                            if (secure) secure()
+                            if (httpOnly) httpOnly()
+                        }
+                        .build()
+                    cookies.add(cookie)
+                }
+            }
+
+            if (cookies.isNotEmpty()) {
+                cookieStore[host] = cookies
+                Gdx.app.log("CookieJar", "Loaded ${cookies.size} cookies for $host from disk")
+            }
+        }
     }
 }
 
@@ -62,6 +131,7 @@ object AxiomApiClient {
     private const val API_BASE_URL = "https://axiom.joshbaker.gg"
 
     private val cookieJar = SimpleCookieJar()
+    private val userPrefs = Gdx.app.getPreferences("axiom_user")
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(10, TimeUnit.SECONDS)
@@ -104,11 +174,36 @@ object AxiomApiClient {
     }
 
     /**
-     * Clear all session cookies (call on logout)
+     * Clear all session cookies and user data (call on logout)
      */
     fun clearSession() {
         cookieJar.clear()
+        userPrefs.clear()
+        userPrefs.flush()
         Gdx.app.log("AxiomApiClient", "Session cleared")
+    }
+
+    /**
+     * Save user credentials to disk
+     */
+    fun saveUserData(userId: String, username: String) {
+        userPrefs.putString("userId", userId)
+        userPrefs.putString("username", username)
+        userPrefs.flush()
+        Gdx.app.log("AxiomApiClient", "User data saved")
+    }
+
+    /**
+     * Load stored user credentials
+     */
+    fun getSavedUser(): Pair<String, String>? {
+        val userId = userPrefs.getString("userId", null)
+        val username = userPrefs.getString("username", null)
+        return if (userId != null && username != null) {
+            Pair(userId, username)
+        } else {
+            null
+        }
     }
 
     // ============================================
@@ -179,6 +274,7 @@ object AxiomApiClient {
 
     /**
      * Authenticate a player and establish a session.
+     * Clears any existing session before attempting login.
      */
     fun login(
         username: String,
@@ -188,6 +284,9 @@ object AxiomApiClient {
     ) {
         launchAsync {
             try {
+                // Clear old session before new login to avoid conflicts
+                cookieJar.clear()
+
                 val signInRequest = SignInRequest(username, password)
                 val requestBody = json.encodeToString(signInRequest)
                 val request = Request.Builder()
@@ -202,6 +301,9 @@ object AxiomApiClient {
                         try {
                             val authResponse = json.decodeFromString<AuthResponse>(body)
                             // Session is stored in cookies automatically
+
+                            // Save user data to disk for auto-login
+                            saveUserData(authResponse.user.id, authResponse.user.username)
 
                             onMainThread {
                                 onSuccess(authResponse.user.id, authResponse.user.username)
