@@ -1,0 +1,54 @@
+---
+title: Axiom - System Architecture & Data Model
+---
+erDiagram
+%% ============================================
+%% MongoDB Collections (Backend)
+%% ============================================
+
+    USER {
+        ObjectId _id PK "Primary Key (MongoDB)"
+        String email UK "Unique, required"
+        String name "Display name"
+        String username UK "Unique login identifier"
+        String emailVerified "Verification status"
+        String image "Profile image URL"
+        DateTime createdAt "Account creation date"
+        DateTime updatedAt "Last modification date"
+    }
+
+    SESSION {
+        ObjectId _id PK "Primary Key"
+        String userId FK "References USER._id"
+        String token UK "Session token"
+        DateTime expiresAt "Session expiry"
+        String ipAddress "Client IP"
+        String userAgent "Browser/Client info"
+        DateTime createdAt "Session start"
+        DateTime updatedAt "Last activity"
+    }
+
+    ACCOUNT {
+        ObjectId _id PK "Primary Key"
+        String userId FK "References USER._id"
+        String accountId "External account ID"
+        String providerId "Auth provider (credential)"
+        String password "Hashed password"
+        DateTime createdAt "Account creation"
+        DateTime updatedAt "Last modification"
+    }
+
+    LEADERBOARD_ENTRY {
+        ObjectId _id PK "Primary Key"
+        String playerId FK "References USER._id"
+        String playerName "Denormalized for display"
+        Number score "Calculated score"
+        Number kills "Enemies killed"
+        Number survivalTime "Seconds survived"
+        DateTime achievedAt "Score timestamp"
+    }
+
+%% Relationships
+    USER ||--o{ SESSION : "has sessions"
+    USER ||--o| ACCOUNT : "has account"
+    USER ||--o{ LEADERBOARD_ENTRY : "has scores"

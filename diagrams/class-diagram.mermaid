@@ -1,0 +1,400 @@
+---
+title: Axiom - Class Diagram
+---
+classDiagram
+    direction TB
+
+%% ============================================
+%% Core Game Classes
+%% ============================================
+
+    class AxiomGame {
+        -SpriteBatch batch
+        -ShapeRenderer shapeRenderer
+        -EventBus eventBus
+        -String currentPlayerId
+        -String currentPlayerName
+        +create() void
+        +render() void
+        +dispose() void
+        +showMenu() void
+        +startGame() void
+        +logout() void
+        +instance$ AxiomGame
+    }
+    note for AxiomGame "Singleton Pattern\n(companion object)"
+
+%% ============================================
+%% Screen System
+%% ============================================
+
+    class Screen {
+        <<interface>>
+        +show() void
+        +render(delta: Float) void
+        +resize(width: Int, height: Int) void
+        +pause() void
+        +resume() void
+        +hide() void
+        +dispose() void
+    }
+
+    class LoginScreen {
+        -AxiomGame game
+        -String username
+        -String password
+        -Boolean isSignUp
+        -Boolean isLoading
+        +show() void
+        +render(delta: Float) void
+        -handleInput() void
+        -submitForm() void
+    }
+
+    class MenuScreen {
+        -AxiomGame game
+        -List~LeaderboardEntry~ leaderboardEntries
+        -Boolean showingLeaderboard
+        +show() void
+        +render(delta: Float) void
+        -loadLeaderboard() void
+        -drawMenu() void
+        -drawLeaderboard() void
+    }
+
+    class GameScreen {
+        -AxiomGame game
+        -OrthographicCamera camera
+        -World world
+        -Player player
+        -Boolean isPaused
+        -Boolean isGameOver
+        +show() void
+        +render(delta: Float) void
+        -initializeGame() void
+        -update(delta: Float) void
+        -spawnEnemy() void
+        -onGameOver() void
+    }
+
+    Screen <|.. LoginScreen
+    Screen <|.. MenuScreen
+    Screen <|.. GameScreen
+    AxiomGame --> Screen : manages
+
+%% ============================================
+%% Entity System
+%% ============================================
+
+    class Entity {
+        <<abstract>>
+        #String id
+        #Float x
+        #Float y
+        #Float width
+        #Float height
+        #Float maxHealth
+        #Float health
+        #Float baseSpeed
+        #Color color
+        +update(delta: Float, world: World)* void
+        +render(shapeRenderer: ShapeRenderer) void
+        +takeDamage(amount: Float, source: Entity) void
+        +heal(amount: Float) void
+        #move(dx: Float, dy: Float, world: World) void
+        #onDeath(killer: Entity) void
+        +isDead() Boolean
+    }
+
+    class Player {
+        -Int kills
+        -Float attackCooldown
+        -Float attackRange
+        -Float attackDamage
+        -Float survivalTime
+        +update(delta: Float, world: World) void
+        -handleMovement(delta: Float, world: World) void
+        -handleAttack(delta: Float, world: World) void
+        -performAttack(world: World) void
+    }
+
+    class Enemy {
+        -AIState state
+        -Float stateTimer
+        -Float detectionRange
+        -Float attackRange
+        -Float attackDamage
+        +update(delta: Float, world: World) void
+        -updateAIState(player: Player) void
+        -transitionTo(newState: AIState) void
+        -performAttack(target: Entity) void
+    }
+
+    Entity <|-- Player
+    Entity <|-- Enemy
+
+%% ============================================
+%% AI State Pattern
+%% ============================================
+
+    class AIState {
+        <<sealed>>
+    }
+
+    class Idle {
+        +object
+    }
+
+    class Wandering {
+        +object
+    }
+
+    class Chasing {
+        +Entity target
+    }
+
+    class Attacking {
+        +Entity target
+    }
+
+    class Fleeing {
+        +object
+    }
+
+    AIState <|-- Idle
+    AIState <|-- Wandering
+    AIState <|-- Chasing
+    AIState <|-- Attacking
+    AIState <|-- Fleeing
+    Enemy --> AIState : uses
+    note for AIState "State Pattern\n(sealed class)"
+
+%% ============================================
+%% Entity Factory
+%% ============================================
+
+    class EntityFactory {
+        <<object>>
+        +createEnemy(type: EnemyType, x: Float, y: Float) Enemy
+        +createPlayer(x: Float, y: Float) Player
+        +createRandomEnemy(x: Float, y: Float) Enemy
+    }
+    note for EntityFactory "Factory Pattern"
+
+    class EnemyType {
+        <<enumeration>>
+        SLIME
+        SKELETON
+        ORC
+        DEMON
+        +String displayName
+        +Color color
+        +Float health
+        +Float damage
+        +Float speed
+    }
+
+    EntityFactory ..> Enemy : creates
+    EntityFactory ..> Player : creates
+    EntityFactory --> EnemyType : uses
+
+%% ============================================
+%% World System
+%% ============================================
+
+    class World {
+        -WorldGenerator generator
+        -Map~String, Chunk~ chunks
+        -List~Entity~ entities
+        +updateLoadedChunks(centerX: Float, centerY: Float) void
+        +getTileAt(worldX: Float, worldY: Float) Tile
+        +isWalkable(worldX: Float, worldY: Float) Boolean
+        +getSpeedModifier(worldX: Float, worldY: Float) Float
+        +addEntity(entity: Entity) void
+        +removeEntity(entity: Entity) void
+        +getEntitiesNear(x: Float, y: Float, radius: Float) List~Entity~
+        +render(shapeRenderer: ShapeRenderer, camera: OrthographicCamera) void
+    }
+
+    class Chunk {
+        +Int chunkX
+        +Int chunkY
+        -Array~Array~Tile~~ tiles
+        -Set~Entity~ entities
+        +getTile(localX: Int, localY: Int) Tile
+        +setTileType(localX: Int, localY: Int, type: TileType) void
+        +addEntity(entity: Entity) void
+        +removeEntity(entity: Entity) void
+        +SIZE$ Int
+        +TILE_SIZE$ Float
+    }
+
+    class Tile {
+        +TileType type
+        +Int worldX
+        +Int worldY
+        +solid() Boolean
+        +speedModifier() Float
+        +color() Color
+    }
+
+    class TileType {
+        <<enumeration>>
+        WATER
+        SAND
+        GRASS
+        FOREST
+        STONE
+        MOUNTAIN
+        +Color color
+        +Boolean solid
+        +Float speedModifier
+        +fromNoise(elevation: Float, moisture: Float)$ TileType
+    }
+
+    World o-- Chunk : contains
+    Chunk o-- Tile : contains
+    Tile --> TileType : has
+    World o-- Entity : manages
+    GameScreen --> World : uses
+
+%% ============================================
+%% World Generation - Strategy Pattern
+%% ============================================
+
+    class WorldGenerator {
+        <<interface>>
+        +generateChunk(chunk: Chunk) void
+        +seed() Long
+    }
+
+    class NoiseWorldGenerator {
+        -Long seed
+        -SimplexNoise elevationNoise
+        -SimplexNoise moistureNoise
+        +generateChunk(chunk: Chunk) void
+    }
+
+    class FlatWorldGenerator {
+        -Long seed
+        +generateChunk(chunk: Chunk) void
+    }
+
+    class SimplexNoise {
+        -Long seed
+        -IntArray permutation
+        +sample(x: Float, y: Float) Float
+    }
+
+    WorldGenerator <|.. NoiseWorldGenerator
+    WorldGenerator <|.. FlatWorldGenerator
+    World --> WorldGenerator : uses
+    NoiseWorldGenerator --> SimplexNoise : uses
+    note for WorldGenerator "Strategy Pattern"
+
+%% ============================================
+%% Event System - Observer Pattern
+%% ============================================
+
+    class EventBus {
+        -Map listeners
+        +subscribe~T~(handler: Function) EventListener
+        +unsubscribe(listener: EventListener) void
+        +emit~T~(event: T) void
+        +clearAll() void
+    }
+    note for EventBus "Observer Pattern"
+
+    class GameEvent {
+        <<abstract>>
+        -Boolean cancelled
+        +cancel() void
+    }
+
+    class PlayerLoginEvent {
+        +String playerId
+        +String playerName
+    }
+
+    class PlayerMoveEvent {
+        +Float oldX
+        +Float oldY
+        +Float newX
+        +Float newY
+    }
+
+    class EntityDamageEvent {
+        +Entity entity
+        +Float damage
+        +Entity source
+    }
+
+    class EntityDeathEvent {
+        +Entity entity
+        +Entity killer
+    }
+
+    class AttackEvent {
+        +Entity attacker
+        +Entity target
+        +Float damage
+    }
+
+    class ChunkLoadEvent {
+        +Chunk chunk
+    }
+
+    class GameStartEvent
+    class GameEndEvent {
+        +Int kills
+        +Float survivalTime
+    }
+    class GamePauseEvent
+    class GameResumeEvent
+
+    GameEvent <|-- PlayerLoginEvent
+    GameEvent <|-- PlayerMoveEvent
+    GameEvent <|-- EntityDamageEvent
+    GameEvent <|-- EntityDeathEvent
+    GameEvent <|-- AttackEvent
+    GameEvent <|-- ChunkLoadEvent
+    GameEvent <|-- GameStartEvent
+    GameEvent <|-- GameEndEvent
+    GameEvent <|-- GamePauseEvent
+    GameEvent <|-- GameResumeEvent
+
+    EventBus --> GameEvent : emits
+    AxiomGame *-- EventBus : owns
+
+%% ============================================
+%% API Client
+%% ============================================
+
+    class AxiomApiClient {
+        <<object>>
+        -String API_BASE_URL
+        -OkHttpClient client
+        -SimpleCookieJar cookieJar
+        +initialize() void
+        +shutdown() void
+        +register(username: String, password: String, onSuccess: Function, onFailure: Function) void
+        +login(username: String, password: String, onSuccess: Function, onFailure: Function) void
+        +submitScore(kills: Int, survivalTime: Float, score: Int, onComplete: Function) void
+        +getTopScores(limit: Int, onSuccess: Function, onFailure: Function) void
+        +clearSession() void
+        +getSavedUser() Pair~String, String~
+    }
+    note for AxiomApiClient "Singleton Pattern"
+
+    class LeaderboardEntry {
+        +String playerId
+        +String playerName
+        +Int score
+        +Int kills
+        +Double survivalTime
+    }
+
+    AxiomApiClient ..> LeaderboardEntry : returns
+    LoginScreen --> AxiomApiClient : uses
+    MenuScreen --> AxiomApiClient : uses
+    GameScreen --> AxiomApiClient : uses

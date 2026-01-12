@@ -1,0 +1,179 @@
+---
+title: Axiom - Sequence Diagram (Game Session Flow)
+---
+sequenceDiagram
+    autonumber
+
+    participant User as Player
+    participant LS as LoginScreen
+    participant API as AxiomApiClient
+    participant Backend as Backend API
+    participant AG as AxiomGame
+    participant MS as MenuScreen
+    participant GS as GameScreen
+    participant W as World
+    participant WG as WorldGenerator
+    participant EF as EntityFactory
+    participant P as Player Entity
+    participant E as Enemy
+    participant EB as EventBus
+
+%% ============================================
+%% Authentication Phase
+%% ============================================
+
+    rect rgb(40, 60, 60)
+        Note over User,Backend: Authentication Phase
+
+        User->>LS: Enter credentials
+        LS->>API: login(username, password)
+        API->>Backend: POST /api/auth/sign-in
+        Backend-->>API: Session cookie + user data
+        API->>API: saveUserData(userId, username)
+        API-->>LS: onSuccess(userId, username)
+        LS->>EB: emit(PlayerLoginEvent)
+        LS->>AG: showMenu()
+        AG->>MS: setScreen(MenuScreen)
+    end
+
+%% ============================================
+%% Menu & Leaderboard Phase
+%% ============================================
+
+    rect rgb(40, 50, 70)
+        Note over User,Backend: Menu Navigation
+
+        User->>MS: Click "Leaderboard"
+        MS->>API: getTopScores(limit=10)
+        API->>Backend: GET /api/leaderboard
+        Backend-->>API: List<LeaderboardEntry>
+        API-->>MS: onSuccess(entries)
+        MS->>MS: Display leaderboard
+
+        User->>MS: Click "Play Game"
+        MS->>AG: startGame()
+        AG->>GS: setScreen(GameScreen)
+    end
+
+%% ============================================
+%% Game Initialization Phase
+%% ============================================
+
+    rect rgb(50, 60, 50)
+        Note over GS,EB: Game Initialization
+
+        GS->>GS: initializeGame()
+        GS->>WG: new NoiseWorldGenerator(seed)
+        GS->>W: new World(generator)
+        GS->>EF: createPlayer(0, 0)
+        EF-->>GS: Player instance
+        GS->>W: addEntity(player)
+        GS->>W: updateLoadedChunks(0, 0)
+
+        loop Load Initial Chunks
+            W->>WG: generateChunk(chunk)
+            WG->>WG: Sample noise for tiles
+            WG-->>W: Chunk with tiles
+            W->>EB: emit(ChunkLoadEvent)
+        end
+
+        loop Spawn Initial Enemies
+            GS->>EF: createRandomEnemy(x, y)
+            EF-->>GS: Enemy instance
+            GS->>W: addEntity(enemy)
+        end
+
+        GS->>EB: emit(GameStartEvent)
+    end
+
+%% ============================================
+%% Game Loop Phase
+%% ============================================
+
+    rect rgb(60, 50, 50)
+        Note over User,EB: Game Loop (per frame)
+
+        loop Every Frame (delta)
+            User->>GS: Input (WASD, Mouse)
+            GS->>P: update(delta, world)
+            P->>P: handleMovement(delta, world)
+            P->>W: isWalkable(newX, newY)
+            W-->>P: Boolean
+            P->>W: getSpeedModifier(x, y)
+            W-->>P: Float
+            P->>EB: emit(PlayerMoveEvent)
+            P->>W: updateEntityChunk(this)
+
+            alt Player Attacks
+                User->>GS: Left Click
+                P->>P: performAttack(world)
+                P->>W: getEntitiesNear(x, y, attackRange)
+                W-->>P: List<Entity>
+                P->>EB: emit(AttackEvent)
+                P->>E: takeDamage(damage, player)
+                E->>EB: emit(EntityDamageEvent)
+
+                alt Enemy Dies
+                    E->>EB: emit(EntityDeathEvent)
+                    P->>P: kills++
+                end
+            end
+
+            loop Update Each Enemy
+                GS->>E: update(delta, world)
+                E->>E: updateAIState(player)
+
+                alt State: Chasing
+                    E->>E: Move toward player
+                else State: Attacking
+                    E->>P: takeDamage(damage, enemy)
+                    P->>EB: emit(EntityDamageEvent)
+                else State: Wandering
+                    E->>E: Move randomly
+                end
+            end
+
+            GS->>W: updateLoadedChunks(player.x, player.y)
+        end
+    end
+
+%% ============================================
+%% Game Over Phase
+%% ============================================
+
+    rect rgb(70, 40, 40)
+        Note over P,Backend: Player Death (Lose Condition)
+
+        E->>P: takeDamage(fatal)
+        P->>EB: emit(EntityDamageEvent)
+        P->>P: health = 0
+        P->>EB: emit(EntityDeathEvent)
+        P->>GS: isDead = true
+        GS->>GS: onGameOver()
+        GS->>GS: isGameOver = true
+        GS->>EB: emit(GameEndEvent)
+        GS->>GS: calculateScore(kills, survivalTime)
+        GS->>API: submitScore(kills, survivalTime, score)
+        API->>Backend: POST /api/scores
+        Backend-->>API: Success
+        API-->>GS: onComplete(true)
+        GS->>GS: Display Game Over screen
+    end
+
+%% ============================================
+%% Restart or Return to Menu
+%% ============================================
+
+    rect rgb(50, 50, 60)
+        Note over User,AG: Post-Game Options
+
+        alt Press R (Restart)
+            User->>GS: Press R key
+            GS->>GS: initializeGame()
+            Note right of GS: Cycle repeats
+        else Press ESC/M (Menu)
+            User->>GS: Press ESC or M
+            GS->>AG: showMenu()
+            AG->>MS: setScreen(MenuScreen)
+        end
+    end

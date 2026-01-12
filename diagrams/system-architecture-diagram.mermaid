@@ -1,0 +1,107 @@
+---
+title: Axiom - System Architecture Overview
+---
+flowchart TB
+    subgraph Client["Game Client (Kotlin/LibGDX)"]
+        direction TB
+
+        subgraph Screens["Screen Layer"]
+            LS[LoginScreen]
+            MS[MenuScreen]
+            GS[GameScreen]
+        end
+
+        subgraph Core["Core Systems"]
+            AG[AxiomGame<br/>Singleton]
+            EB[EventBus<br/>Observer Pattern]
+            API[AxiomApiClient<br/>Singleton]
+        end
+
+        subgraph GameSystems["Game Systems"]
+            direction LR
+            W[World]
+            WG[WorldGenerator<br/>Strategy Pattern]
+            CM[Chunk Manager]
+        end
+
+        subgraph Entities["Entity System"]
+            direction LR
+            EF[EntityFactory<br/>Factory Pattern]
+            P[Player]
+            E[Enemy<br/>+ AIState]
+        end
+
+    %% Screen connections
+        LS --> API
+        MS --> API
+        GS --> W
+        GS --> P
+        GS --> E
+
+    %% Core connections
+        AG --> LS
+        AG --> MS
+        AG --> GS
+        AG --> EB
+
+    %% Game system connections
+        W --> WG
+        W --> CM
+        WG --> CM
+
+    %% Entity connections
+        EF --> P
+        EF --> E
+        GS --> EF
+
+    %% Event connections
+        P -.-> EB
+        E -.-> EB
+        W -.-> EB
+    end
+
+    subgraph Backend["Backend API (SvelteKit)"]
+        direction TB
+
+        subgraph Routes["API Routes"]
+            AUTH["/api/auth/*<br/>Authentication"]
+            SCORES["/api/scores<br/>Score Submission"]
+            LB["/api/leaderboard<br/>Rankings"]
+            PLAYERS["/api/players/*<br/>Player Data"]
+        end
+
+        subgraph Services["Services"]
+            BA[Better-Auth<br/>Session Management]
+            MDB[(MongoDB<br/>Database)]
+        end
+
+        AUTH --> BA
+        SCORES --> MDB
+        LB --> MDB
+        PLAYERS --> MDB
+        BA --> MDB
+    end
+
+    subgraph WebDashboard["Web Dashboard (SvelteKit)"]
+        direction TB
+        HOME[Home Page]
+        LBPAGE[Leaderboard Page]
+        PROFILE[Player Profiles]
+        APIREF[API Documentation]
+    end
+
+%% Cross-system connections
+    API <-->|HTTPS/REST| AUTH
+    API <-->|HTTPS/REST| SCORES
+    API <-->|HTTPS/REST| LB
+
+    WebDashboard <-->|Server Routes| Backend
+
+%% Styling
+    classDef pattern fill:#2d4a3e,stroke:#10b981,color:#fff
+    classDef singleton fill:#3d3a4a,stroke:#8b5cf6,color:#fff
+    classDef database fill:#1e3a5f,stroke:#3b82f6,color:#fff
+
+    class EF,WG pattern
+    class AG,API,EB singleton
+    class MDB database

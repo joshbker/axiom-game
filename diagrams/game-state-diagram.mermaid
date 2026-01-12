@@ -1,0 +1,73 @@
+---
+title: Axiom - Game State Flowchart
+---
+stateDiagram-v2
+    [*] --> Initializing: Launch Game
+
+    state Initializing {
+        [*] --> LoadFonts
+        LoadFonts --> InitAPI
+        InitAPI --> CheckSession
+        CheckSession --> HasSession: Session exists
+        CheckSession --> NoSession: No session
+    }
+
+    HasSession --> Menu: Auto-login
+    NoSession --> Login: Show login
+
+    state Login {
+        [*] --> SignInForm
+        SignInForm --> Validating: Submit
+        Validating --> SignInForm: Invalid
+        Validating --> Authenticated: Valid
+        SignInForm --> SignUpForm: Toggle
+        SignUpForm --> SignInForm: Toggle
+        SignUpForm --> Validating: Submit
+    }
+
+    Authenticated --> Menu: Success
+    Login --> Menu: Skip Dev mode
+
+    state Menu {
+        [*] --> MainMenu
+        MainMenu --> LeaderboardView: View Leaderboard
+        LeaderboardView --> MainMenu: Back
+        MainMenu --> StartingGame: Play Game
+        MainMenu --> LoggingOut: Sign Out
+    }
+
+    LoggingOut --> Login: Clear session
+
+    StartingGame --> WorldGen: Initialize
+
+    state WorldGen {
+        [*] --> CreateWorld
+        CreateWorld --> GenerateChunks
+        GenerateChunks --> SpawnPlayer
+        SpawnPlayer --> SpawnEnemies
+        SpawnEnemies --> [*]
+    }
+
+    WorldGen --> Playing: Ready
+
+    state Playing {
+        [*] --> Active
+        Active --> Active: Game Loop
+        Active --> Paused: ESC key
+        Paused --> Active: ESC key
+        Paused --> Restarting: R key
+        Paused --> ReturningToMenu: M key
+        Active --> GameOver: Player dies
+    }
+
+    state GameOver {
+        [*] --> CalculateScore
+        CalculateScore --> SubmitScore
+        SubmitScore --> DisplayResults
+        DisplayResults --> WaitingInput
+        WaitingInput --> Restarting: R key
+        WaitingInput --> ReturningToMenu: M key
+    }
+
+    Restarting --> WorldGen: Re-initialize
+    ReturningToMenu --> Menu: Show menu

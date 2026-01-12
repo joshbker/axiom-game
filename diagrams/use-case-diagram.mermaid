@@ -1,0 +1,79 @@
+---
+title: Axiom - Use Case Diagram
+---
+flowchart TB
+    subgraph Actors
+        Player((Player))
+        API((Backend API))
+    end
+
+    subgraph Authentication["Authentication System"]
+        UC1[Register Account]
+        UC2[Login]
+        UC3[Logout]
+        UC4[Restore Session]
+    end
+
+    subgraph GameplaySystem["Gameplay System"]
+        UC5[Start New Game]
+        UC6[Move Player]
+        UC7[Attack Enemies]
+        UC8[Take Damage]
+        UC9[Pause Game]
+        UC10[Resume Game]
+        UC11[Restart Game]
+        UC12[Return to Menu]
+    end
+
+    subgraph WorldSystem["World System"]
+        UC13[Generate World]
+        UC14[Load Chunks]
+        UC15[Unload Chunks]
+        UC16[Spawn Enemies]
+    end
+
+    subgraph LeaderboardSystem["Leaderboard System"]
+        UC17[View Leaderboard]
+        UC18[Submit Score]
+        UC19[View Player Stats]
+    end
+
+    subgraph GameOutcome["Game Outcome"]
+        UC20[Player Death - Lose]
+        UC21[Kill Enemy - Win Points]
+    end
+
+%% Player connections
+    Player --> UC1
+    Player --> UC2
+    Player --> UC3
+    Player --> UC5
+    Player --> UC6
+    Player --> UC7
+    Player --> UC9
+    Player --> UC10
+    Player --> UC11
+    Player --> UC12
+    Player --> UC17
+    Player --> UC19
+
+%% API connections
+    API --> UC1
+    API --> UC2
+    API --> UC4
+    API --> UC17
+    API --> UC18
+    API --> UC19
+
+%% Include relationships
+    UC5 -.->|includes| UC13
+    UC13 -.->|includes| UC14
+    UC6 -.->|includes| UC14
+    UC6 -.->|includes| UC15
+    UC5 -.->|includes| UC16
+    UC7 -.->|includes| UC21
+    UC8 -.->|extends| UC20
+    UC20 -.->|includes| UC18
+
+%% Extend relationships
+    UC2 -.->|extends| UC4
