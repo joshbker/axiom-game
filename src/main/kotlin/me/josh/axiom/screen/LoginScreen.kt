@@ -415,10 +415,13 @@ class LoginScreen(
         AxiomApiClient.register(
             username = username,
             password = password,
-            onSuccess = {
+            onSuccess = { userId, username ->
                 isLoading = false
-                successMessage = "Account created! Signing in..."
-                isSignUp = false
+                game.currentPlayerId = userId
+                game.currentPlayerName = username
+                game.eventBus.emit(PlayerLoginEvent(userId, username))
+                successMessage = "Account created! Welcome!"
+                game.showMenu()
             },
             onFailure = { error ->
                 isLoading = false

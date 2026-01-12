@@ -226,12 +226,12 @@ object AxiomApiClient {
     // ============================================
 
     /**
-     * Register a new player account.
+     * Register a new player account and automatically establish a session.
      */
     fun register(
         username: String,
         password: String,
-        onSuccess: () -> Unit,
+        onSuccess: (userId: String, username: String) -> Unit,
         onFailure: (String) -> Unit
     ) {
         launchAsync {
@@ -254,7 +254,20 @@ object AxiomApiClient {
                     val body = response.body?.string() ?: ""
 
                     if (response.isSuccessful) {
-                        onMainThread { onSuccess() }
+                        try {
+                            val authResponse = json.decodeFromString<AuthResponse>(body)
+                            // Session is stored in cookies automatically
+
+                            // Save user data to disk for auto-login
+                            saveUserData(authResponse.user.id, authResponse.user.username)
+
+                            onMainThread {
+                                onSuccess(authResponse.user.id, authResponse.user.username)
+                            }
+                        } catch (e: Exception) {
+                            Gdx.app.error("AxiomApiClient", "Failed to parse registration response", e)
+                            onMainThread { onFailure("Invalid server response") }
+                        }
                     } else {
                         val errorMsg = try {
                             val errorResponse = json.decodeFromString<ApiResponse<Unit>>(body)
