@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.shadow)
     application
 }
 
@@ -64,4 +65,17 @@ tasks.test {
 
 application {
     mainClass.set("me.josh.axiom.AxiomKt")
+}
+
+tasks.shadowJar {
+    archiveBaseName.set("axiom-game")
+    archiveClassifier.set("")
+    archiveVersion.set("")
+
+    manifest {
+        attributes["Main-Class"] = "me.josh.axiom.AxiomKt"
+    }
+
+    // Merge service files from dependencies
+    mergeServiceFiles()
 }
