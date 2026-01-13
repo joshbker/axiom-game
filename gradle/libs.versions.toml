@@ -8,6 +8,7 @@ serialization = "1.6.0"
 joise = "1.1.0"
 kotest = "5.8.0"
 shadow = "8.3.5"
+runtime = "1.13.1"
 
 [libraries]
 # LibGDX
@@ -43,3 +44,4 @@ kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotl
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
+runtime = { id = "org.beryx.runtime", version.ref = "runtime" }

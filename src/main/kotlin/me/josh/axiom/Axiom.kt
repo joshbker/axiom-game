@@ -15,6 +15,7 @@ fun main() {
         setForegroundFPS(60)
         useVsync(true)
         setResizable(true)
+        setWindowIcon("icon.png")
     }
 
     Lwjgl3Application(AxiomGame(), config)

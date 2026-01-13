@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.shadow)
+    alias(libs.plugins.runtime)
     application
 }
 
@@ -78,4 +79,89 @@ tasks.shadowJar {
 
     // Merge service files from dependencies
     mergeServiceFiles()
+}
+
+runtime {
+    options.addAll(listOf("--strip-debug", "--compress", "2", "--no-header-files", "--no-man-pages"))
+
+    modules.addAll(listOf(
+        "java.base",
+        "java.desktop",
+        "java.logging",
+        "java.management",
+        "java.naming",
+        "java.sql",
+        "jdk.unsupported"
+    ))
+
+    jpackage {
+        jpackageHome = System.getProperty("java.home")
+
+        // Application icon and metadata for the executable
+        imageOptions.addAll(listOf(
+            "--icon", "src/main/resources/icon.ico",
+            "--vendor", "Josh Baker",
+            "--copyright", "Copyright 2026 Josh Baker",
+            "--description", "Axiom - 2D Top-Down Sandbox Game",
+            "--app-version", project.version.toString()
+        ))
+
+        installerOptions.addAll(listOf(
+            "--win-dir-chooser",
+            "--win-menu",
+            "--win-shortcut",
+            "--win-per-user-install",
+            "--vendor", "Josh Baker",
+            "--copyright", "Copyright 2026"
+        ))
+
+        installerType = "msi"
+        installerName = "Axiom-Installer"
+        appVersion = project.version.toString()
+    }
+
+    targetPlatform("win") {
+        jdkHome.set(System.getProperty("java.home"))
+    }
+}
+
+// Rename shadowJar output for runtime plugin
+tasks.installShadowDist {
+    doLast {
+        val libDir = file("${destinationDir}/lib")
+        val sourceJar = file("${libDir}/axiom-game.jar")
+        val targetJar = file("${libDir}/${project.name}-${project.version}-all.jar")
+        if (sourceJar.exists() && !targetJar.exists()) {
+            sourceJar.renameTo(targetJar)
+        }
+    }
+}
+
+// Override installDist to use shadowJar
+tasks.installDist {
+    dependsOn(tasks.installShadowDist)
+    doLast {
+        delete(destinationDir)
+        copy {
+            from(tasks.installShadowDist.get().destinationDir)
+            into(destinationDir)
+        }
+    }
+}
+
+// Create distributable ZIP of portable app with bundled JRE
+tasks.register<Zip>("packagePortable") {
+    dependsOn("jpackageImage")
+
+    archiveBaseName.set("Axiom")
+    archiveVersion.set("")
+    destinationDirectory.set(file("${buildDir}/distributions"))
+
+    // Put files directly in ZIP root (no nested folder)
+    from("${buildDir}/jpackage/axiom-game")
+
+    doLast {
+        println("Created distributable ZIP: ${archiveFile.get().asFile}")
+        println("Size: ${archiveFile.get().asFile.length() / 1024 / 1024}MB")
+    }
 }
